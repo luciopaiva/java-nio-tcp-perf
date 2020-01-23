@@ -64,7 +64,7 @@ public class TcpServer {
                 } else if (selectableChannel instanceof SocketChannel && selectionKey.isReadable()) {
                     readFromKey(selectionKey);
                 } else {
-                    throw new Error("Unknown SelectableChannel type '" + selectableChannel.getClass().getName() + "'");
+                    throw new Error("Unknown SelectableChannel type '" + selectableChannel.getClass().getName() + "'.");
                 }
             } else {
                 closeKey(selectionKey);
@@ -72,7 +72,7 @@ public class TcpServer {
         } catch (CancelledKeyException ignored) {
             // key was cancelled, no big deal; just move on
         } catch (IOException e) {
-            System.err.println("Something wrong happened with this key");
+            System.err.println("Something wrong happened with this key.");
         }
     }
 
@@ -83,8 +83,12 @@ public class TcpServer {
         ByteBuffer buffer = ByteBuffer.allocate(64);
         int read = socketChannel.read(buffer);
         if (read < 0) {
-            System.out.println("Nothing to read, socket probably already closed");
+            System.out.println("Nothing to read, socket probably already closed.");
             closeKey(selectionKey);
+        } else if (read == 0) {
+            System.out.println("Received read notification but there was nothing there.");
+        } else {
+            System.out.println(String.format("Read %d bytes from client socket.", read));
         }
     }
 
