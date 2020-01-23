@@ -3,6 +3,7 @@ package com.luciopaiva;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedSelectorException;
@@ -89,10 +90,14 @@ public class TcpServer {
 
     private void acceptNewTcpConnection() throws IOException {
         SocketChannel socketChannel = tcpServerSocketChannel.accept();
+        // this is probably not necessary because the server socket was already set to non-blocking and
+        // I don't think we can change the configuration after accept() is called anyway
         socketChannel.configureBlocking(false);
         socketChannel.register(selector, SelectionKey.OP_READ);
+        int sendBufferLength = socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
+        int recvBufferLength = socketChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 
-        System.out.println("Connection accepted");
+        System.out.println(String.format("Connection accepted (sndbuf: %d, recvbuf: %d).", sendBufferLength, recvBufferLength));
     }
 
     private void closeKey(SelectionKey selectionKey) {
