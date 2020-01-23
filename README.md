@@ -7,6 +7,10 @@ It is basically made of two parts: TcpServer and TcpClientBatch. The former runs
 
 Upon connection, the client doesn't send anything. It just sits waiting for data from the server. The server, on its turn, will start sending random bytes of data to each connected client.
 
-## How to run
+## How to build and run
 
-To run it, don't forget to pass the `-Djava.net.preferIPv4Stack=true` parameter if you want to stick to IPv4.
+To build it:
+
+    gradle jar
+    
+Then run both `server.sh` and `client.sh`, each on a separate terminal window.
