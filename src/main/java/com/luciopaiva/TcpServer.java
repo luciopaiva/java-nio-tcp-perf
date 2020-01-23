@@ -13,7 +13,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 
-import static com.luciopaiva.Constants.SELECTION_TIMEOUT_IN_MILLIS;
+import static com.luciopaiva.Constants.SELECT_TIMEOUT;
 import static com.luciopaiva.Constants.SERVER_PORT;
 
 public class TcpServer {
@@ -43,7 +43,7 @@ public class TcpServer {
 
         while (isServerActive) {
             try {
-                if (selector.select(SELECTION_TIMEOUT_IN_MILLIS) > 0) {
+                if (selector.select(SELECT_TIMEOUT) > 0) {
                     selector.selectedKeys().forEach(this::handleSelectionKey);
                     selector.selectedKeys().clear();
                 }

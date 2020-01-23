@@ -8,6 +8,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
+import static com.luciopaiva.Constants.SELECT_TIMEOUT;
+
 @SuppressWarnings("FieldCanBeLocal")
 public class TcpClientBatch {
 
@@ -29,7 +31,7 @@ public class TcpClientBatch {
 
         try {
             while (activeKeys > 0) {
-                if (selector.select(Constants.SELECTION_TIMEOUT_IN_MILLIS) > 0) {
+                if (selector.select(SELECT_TIMEOUT) > 0) {
                     for (SelectionKey selectionKey : selector.selectedKeys()) {
                         handleSelectionKey(selectionKey);
                     }
@@ -51,10 +53,13 @@ public class TcpClientBatch {
         } else if (selectionKey.isConnectable()) {
             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
             try {
-                if (!socketChannel.finishConnect()) {
-                    System.err.println("Error establishing socket connection.");
-                } else {
+                if (socketChannel.finishConnect()) {
                     System.out.println("Connected.");
+                    // unregister for OP_CONNECT (important otherwise select() will return immediately),
+                    // register for OP_READ
+                    socketChannel.register(selector, SelectionKey.OP_READ);
+                } else {
+                    System.err.println("Error establishing socket connection.");
                 }
             } catch (IOException e) {
                 System.err.println("Connection failed: " + e.getMessage());
@@ -67,6 +72,8 @@ public class TcpClientBatch {
                 System.err.println("Error reading from key. Proceeding to close it...");
                 closeKey(selectionKey);
             }
+        } else {
+            System.out.println("wat");
         }
     }
 
@@ -107,7 +114,7 @@ public class TcpClientBatch {
     private void createSocketChannel() throws IOException {
         SocketChannel socketChannel = SocketChannel.open();
         socketChannel.configureBlocking(false);
-        socketChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT);
+        socketChannel.register(selector, SelectionKey.OP_CONNECT);
         int sendBufferLength = socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
         int recvBufferLength = socketChannel.getOption(StandardSocketOptions.SO_RCVBUF);
         System.out.println(String.format("Creating new socket (sndbuf: %d, recvbuf: %d)...", sendBufferLength, recvBufferLength));
@@ -115,15 +122,17 @@ public class TcpClientBatch {
     }
 
     public static void main(String ...args) throws IOException, InterruptedException {
-        if (args.length != 2) {
+        System.out.println("Started!");
+
+        if (args.length < 1) {
             System.err.println("Params expected:");
             System.err.println("- host");
-            System.err.println("- port");
+            System.err.println("- [port]");
             System.exit(1);
         }
 
         String host = args[0];
-        int port = Integer.parseInt(args[1]);
+        int port = args.length > 1 ? Integer.parseInt(args[1]) : Constants.SERVER_PORT;
 
         TcpClientBatch clients = new TcpClientBatch(host, port);
         clients.run();
