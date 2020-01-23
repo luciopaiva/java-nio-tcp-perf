@@ -26,6 +26,7 @@ public class TcpServer {
     private static final long METRICS_REPORT_PERIOD_IN_NANOS = 1_000_000_000;
     private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
+    private final int port;
     private final Selector selector;
     private final ServerSocketChannel tcpServerSocketChannel;
     private final HashSet<SocketChannel> clientSocketChannels;
@@ -40,7 +41,8 @@ public class TcpServer {
     private long partialSends = 0;
     private long failedSends = 0;
 
-    public TcpServer() throws IOException {
+    public TcpServer(int port) throws IOException {
+        this.port = port;
         selector = SelectorProvider.provider().openSelector();
 
         metricsHeader = " good    | partial | failed   ";
@@ -63,7 +65,7 @@ public class TcpServer {
 
     private void run() throws IOException {
         InetAddress host = InetAddress.getByName(ADDRESS_IPV4_ANY);
-        this.tcpServerSocketChannel.bind(new InetSocketAddress(host, SERVER_PORT));
+        this.tcpServerSocketChannel.bind(new InetSocketAddress(host, port));
 
         System.out.println(String.format("Server started at %s. Entering main loop...",
                 Utils.getAddressStr(tcpServerSocketChannel.getLocalAddress())));
@@ -184,7 +186,12 @@ public class TcpServer {
     }
 
     public static void main(String ...args) throws IOException {
-        TcpServer server = new TcpServer();
+        int port = SERVER_PORT;
+        if (args.length > 0) {
+            port = Integer.parseInt(args[0]);
+        }
+
+        TcpServer server = new TcpServer(port);
         server.run();
     }
 }
