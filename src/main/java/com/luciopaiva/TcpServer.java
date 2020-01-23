@@ -13,21 +13,47 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
+import java.util.HashSet;
+import java.util.Random;
 
+import static com.luciopaiva.Constants.PACKET_SIZE_IN_BYTES;
 import static com.luciopaiva.Constants.SELECT_TIMEOUT;
 import static com.luciopaiva.Constants.SERVER_PORT;
 
 public class TcpServer {
 
     private static final String ADDRESS_IPV4_ANY = "0.0.0.0";
+    private static final long METRICS_REPORT_PERIOD_IN_NANOS = 1_000_000_000;
+    private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
     private final Selector selector;
     private final ServerSocketChannel tcpServerSocketChannel;
+    private final HashSet<SocketChannel> clientSocketChannels;
+    private final ByteBuffer buffer;
+    private final String metricsHeader;
 
     private boolean isServerActive = true;
+    private long nextTimeShouldSend = 0;
+    private int countdownToHeader = 0;
+
+    private long successfulSends = 0;
+    private long partialSends = 0;
+    private long failedSends = 0;
 
     public TcpServer() throws IOException {
         selector = SelectorProvider.provider().openSelector();
+
+        metricsHeader = " good    | partial | failed   ";
+
+        // prepare buffer with random data to send
+        Random random = new Random(42);
+        buffer = ByteBuffer.allocate(PACKET_SIZE_IN_BYTES);
+        while (buffer.hasRemaining()) {
+            buffer.putLong(random.nextLong());
+        }
+        buffer.flip();
+
+        clientSocketChannels = new HashSet<>();
 
         tcpServerSocketChannel = ServerSocketChannel.open();
         tcpServerSocketChannel.configureBlocking(false);
@@ -48,11 +74,51 @@ public class TcpServer {
                     selector.selectedKeys().forEach(this::handleSelectionKey);
                     selector.selectedKeys().clear();
                 }
+
+                long now = System.nanoTime();
+                if (nextTimeShouldSend <= now) {
+                    sendDataToAllClients();
+                    reportMetrics();
+                    nextTimeShouldSend = now + METRICS_REPORT_PERIOD_IN_NANOS;
+                }
+
             } catch (ClosedSelectorException e) {
                 isServerActive = false;
                 System.out.println("Selector was closed. Terminating...");
             }
         }
+    }
+
+    private void sendDataToAllClients() {
+        successfulSends = 0;
+        partialSends = 0;
+        failedSends = 0;
+
+        for (SocketChannel client : clientSocketChannels) {
+            try {
+                long written = client.write(buffer);
+                if (written == PACKET_SIZE_IN_BYTES) {
+                    successfulSends++;
+                } else if (written == 0) {
+                    failedSends++;
+                } else {
+                    partialSends++;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                buffer.position(0);  // no matter how much we've read, move the pointer back to the start
+            }
+        }
+    }
+
+    private void reportMetrics() {
+        if (countdownToHeader == 0) {
+            System.out.println(metricsHeader);
+            countdownToHeader = HEADER_PERIOD_IN_REPORTS;
+        }
+        countdownToHeader--;
+        System.out.println(String.format(" %7d | %7d | %7d ", successfulSends, partialSends, failedSends));
     }
 
     private void handleSelectionKey(SelectionKey selectionKey) {
@@ -101,6 +167,8 @@ public class TcpServer {
         int sendBufferLength = socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
         int recvBufferLength = socketChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 
+        clientSocketChannels.add(socketChannel);
+
         System.out.println(String.format("Connection accepted (sndbuf: %d, recvbuf: %d).", sendBufferLength, recvBufferLength));
     }
 
@@ -110,6 +178,7 @@ public class TcpServer {
             socketChannel.close();
         } catch (IOException ignored) {
         } finally {
+            clientSocketChannels.remove(socketChannel);
             selectionKey.cancel();
         }
     }
