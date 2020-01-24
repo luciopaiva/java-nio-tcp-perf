@@ -28,11 +28,10 @@ public class TcpClientBatch {
         activeKeys = numberOfClients;
     }
 
-    public void run() throws InterruptedException {
-        Thread connectionCreatorThread = new Thread(this::createConnectionBatch);
-        connectionCreatorThread.start();
-
+    public void run() {
         try {
+            createConnectionBatch();
+
             while (activeKeys > 0) {
                 if (selector.select(SELECT_TIMEOUT) > 0) {
                     for (SelectionKey selectionKey : selector.selectedKeys()) {
@@ -46,8 +45,6 @@ public class TcpClientBatch {
         }
 
         System.out.println("No more active keys. Terminating...");
-
-        connectionCreatorThread.join();
     }
 
     private void handleSelectionKey(SelectionKey selectionKey) {
@@ -104,13 +101,9 @@ public class TcpClientBatch {
         System.out.println("Key closed. Keys still active: " + activeKeys);
     }
 
-    private void createConnectionBatch() {
+    private void createConnectionBatch() throws IOException {
         for (int i = 0; i < numberOfClients; i++) {
-            try {
-                createSocketChannel();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            createSocketChannel();
         }
     }
 
@@ -124,7 +117,7 @@ public class TcpClientBatch {
         socketChannel.connect(serverAddress);
     }
 
-    public static void main(String ...args) throws IOException, InterruptedException {
+    public static void main(String ...args) throws IOException {
         System.out.println("Started!");
 
         if (args.length < 1) {
