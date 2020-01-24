@@ -1,6 +1,8 @@
 
 # Java TCP performance test
 
+![](screenshots/screenshot-20200124-0200.png)
+
 This is an experiment to test some performance aspects of a Java TCP server.
 
 It is basically made of two parts: TcpServer and TcpClientBatch. The former runs a vanilla NIO non-blocking server and the latter spawns a certain number of NIO, also non-blocking, TCP clients which will connect to the server part.
