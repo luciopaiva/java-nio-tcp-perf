@@ -9,11 +9,19 @@ Upon connection, the client doesn't send anything. It just sits waiting for data
 
 ## How to build and run
 
-To build it:
+Make sure you have at least Java 1.8. To install it:
+
+    sudo yum install java-1.8.0-openjdk
+
+Then use this to change the system's current Java to the newly installed:
+
+    sudo update-alternatives --config java
+
+On the machine you'll build the project, make sure you have Gradle installed. To build it:
 
     gradle jar
     
-Then run both `server.sh` and `client.sh`, each on a separate terminal window.
+Then run both `server.sh` and `client.sh`, each on a separate terminal window. They will look for `tcp-java-perf-1.0-SNAPSHOT.jar`, which should be either in the same folder or in `build/libs`.
 
 ## Things learned
 
