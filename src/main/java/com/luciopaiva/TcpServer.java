@@ -23,7 +23,10 @@ import static com.luciopaiva.Constants.SERVER_PORT;
 public class TcpServer {
 
     private static final String ADDRESS_IPV4_ANY = "0.0.0.0";
-    private static final long METRICS_REPORT_PERIOD_IN_NANOS = 1_000_000_000;
+    private static final long SEND_PERIOD_IN_MILLIS = 200;
+    private static final long SEND_PERIOD_IN_NANOS = SEND_PERIOD_IN_MILLIS * 1_000_000;
+    private static final long METRICS_REPORT_PERIOD_IN_MILLIS = 1000;
+    private static final long METRICS_REPORT_PERIOD_IN_NANOS = METRICS_REPORT_PERIOD_IN_MILLIS * 1_000_000_000;
     private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
     private final int port;
@@ -35,6 +38,7 @@ public class TcpServer {
 
     private boolean isServerActive = true;
     private long nextTimeShouldSend = 0;
+    private long nextTimeShouldReportMetrics = 0;
     private int countdownToHeader = 0;
 
     private long successfulSends = 0;
@@ -78,10 +82,15 @@ public class TcpServer {
                 }
 
                 long now = System.nanoTime();
+
                 if (nextTimeShouldSend <= now) {
                     sendDataToAllClients();
+                    nextTimeShouldSend = now + SEND_PERIOD_IN_NANOS;
+                }
+
+                if (nextTimeShouldReportMetrics <= now) {
                     reportMetrics();
-                    nextTimeShouldSend = now + METRICS_REPORT_PERIOD_IN_NANOS;
+                    nextTimeShouldReportMetrics = now + METRICS_REPORT_PERIOD_IN_NANOS;
                 }
 
             } catch (ClosedSelectorException e) {
