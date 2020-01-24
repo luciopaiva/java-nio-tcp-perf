@@ -13,16 +13,19 @@ import static com.luciopaiva.Constants.SELECT_TIMEOUT;
 @SuppressWarnings("FieldCanBeLocal")
 public class TcpClientBatch {
 
-    private final int NUMBER_OF_CLIENTS = 10;
+    private static final int NUMBER_OF_CLIENTS = 10;
 
     private final Selector selector;
     private final InetSocketAddress serverAddress;
+    private final int numberOfClients;
 
-    private int activeKeys = NUMBER_OF_CLIENTS;
+    private int activeKeys;
 
-    public TcpClientBatch(String host, int port) throws IOException {
+    public TcpClientBatch(String host, int port, int numberOfClients) throws IOException {
         selector = Selector.open();
         serverAddress = new InetSocketAddress(host, port);
+        this.numberOfClients = numberOfClients;
+        activeKeys = numberOfClients;
     }
 
     public void run() throws InterruptedException {
@@ -102,7 +105,7 @@ public class TcpClientBatch {
     }
 
     private void createConnectionBatch() {
-        for (int i = 0; i < NUMBER_OF_CLIENTS; i++) {
+        for (int i = 0; i < numberOfClients; i++) {
             try {
                 createSocketChannel();
             } catch (IOException e) {
@@ -133,8 +136,9 @@ public class TcpClientBatch {
 
         String host = args[0];
         int port = args.length > 1 ? Integer.parseInt(args[1]) : Constants.SERVER_PORT;
+        int numberOfClients = args.length > 2 ? Integer.parseInt(args[2]) : NUMBER_OF_CLIENTS;
 
-        TcpClientBatch clients = new TcpClientBatch(host, port);
+        TcpClientBatch clients = new TcpClientBatch(host, port, numberOfClients);
         clients.run();
     }
 }
