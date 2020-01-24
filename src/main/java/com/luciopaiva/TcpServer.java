@@ -26,7 +26,7 @@ public class TcpServer {
     private static final long SEND_PERIOD_IN_MILLIS = 200;
     private static final long SEND_PERIOD_IN_NANOS = SEND_PERIOD_IN_MILLIS * 1_000_000;
     private static final long METRICS_REPORT_PERIOD_IN_MILLIS = 1000;
-    private static final long METRICS_REPORT_PERIOD_IN_NANOS = METRICS_REPORT_PERIOD_IN_MILLIS * 1_000_000_000;
+    private static final long METRICS_REPORT_PERIOD_IN_NANOS = METRICS_REPORT_PERIOD_IN_MILLIS * 1_000_000;
     private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
     private final int port;
