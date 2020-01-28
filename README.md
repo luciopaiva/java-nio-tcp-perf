@@ -25,6 +25,18 @@ On the machine you'll build the project, make sure you have Gradle installed. To
     
 Then run both `server.sh` and `client.sh`, each on a separate terminal window. They will look for `tcp-java-perf-1.0-SNAPSHOT.jar`, which should be either in the same folder or in `build/libs`.
 
+To run the server:
+
+    ./server.sh 3000
+
+Where `3000` should be replaced by the port the server should listen on.
+
+And the client:
+
+    ./client.sh 1.2.3.4 3000 100
+
+Where `1.2.3.4` is the server's IP address, `3000` is the server port and `100` is how many socket connections should be opened.
+
 ## Things learned
 
 ### Do not create sockets in a separate thread
