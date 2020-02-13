@@ -18,7 +18,6 @@ import java.util.Random;
 
 import static com.luciopaiva.Constants.PACKET_SIZE_IN_BYTES;
 import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
-import static com.luciopaiva.Constants.SERVER_PORT;
 
 public class TcpServer {
 
@@ -222,12 +221,9 @@ public class TcpServer {
     }
 
     public static void main(String ...args) throws IOException {
-        int port = SERVER_PORT;
-        if (args.length > 0) {
-            port = Integer.parseInt(args[0]);
-        }
+        ServerArguments arguments = ServerArguments.parseServer(args);
 
-        TcpServer server = new TcpServer(port);
+        TcpServer server = new TcpServer(arguments.port);
         server.run();
     }
 }

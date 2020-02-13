@@ -10,4 +10,4 @@ SERVER=$1
 PORT=$2
 COUNT=$3
 
-java -Djava.net.preferIPv4Stack=true -cp tcp-java-perf-1.0-SNAPSHOT.jar com.luciopaiva.TcpClientBatch ${SERVER} ${PORT} ${COUNT}
+java -Djava.net.preferIPv4Stack=true -cp tcp-java-perf-1.0-SNAPSHOT-all.jar com.luciopaiva.TcpClientBatch ${SERVER} ${PORT} ${COUNT}

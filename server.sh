@@ -8,4 +8,4 @@ fi
 
 PORT=$1
 
-java -Djava.net.preferIPv4Stack=true -cp tcp-java-perf-1.0-SNAPSHOT.jar com.luciopaiva.TcpServer ${PORT}
+java -Djava.net.preferIPv4Stack=true -cp tcp-java-perf-1.0-SNAPSHOT-all.jar com.luciopaiva.TcpServer ${PORT}
