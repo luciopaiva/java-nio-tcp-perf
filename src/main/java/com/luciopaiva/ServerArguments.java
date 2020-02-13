@@ -1,6 +1,5 @@
 package com.luciopaiva;
 
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -17,7 +16,7 @@ class ServerArguments {
 
     int port = Constants.SERVER_PORT;
 
-    static ServerArguments parseServer(String ...args) {
+    static ServerArguments parse(String ...args) {
         CommandLineParser parser = new DefaultParser();
         ServerArguments arguments = new ServerArguments();
 

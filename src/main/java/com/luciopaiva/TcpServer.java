@@ -221,7 +221,7 @@ public class TcpServer {
     }
 
     public static void main(String ...args) throws IOException {
-        ServerArguments arguments = ServerArguments.parseServer(args);
+        ServerArguments arguments = ServerArguments.parse(args);
 
         TcpServer server = new TcpServer(arguments.port);
         server.run();

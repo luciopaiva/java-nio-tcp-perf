@@ -13,8 +13,6 @@ import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 @SuppressWarnings("FieldCanBeLocal")
 public class TcpClientBatch {
 
-    private static final int NUMBER_OF_CLIENTS = 10;
-
     private final Selector selector;
     private final InetSocketAddress serverAddress;
     private final int numberOfClients;
@@ -120,18 +118,9 @@ public class TcpClientBatch {
     public static void main(String ...args) throws IOException {
         System.out.println("Started!");
 
-        if (args.length < 1) {
-            System.err.println("Params expected:");
-            System.err.println("- host");
-            System.err.println("- [port]");
-            System.exit(1);
-        }
+        ClientArguments arguments = ClientArguments.parse(args);
 
-        String host = args[0];
-        int port = args.length > 1 ? Integer.parseInt(args[1]) : Constants.SERVER_PORT;
-        int numberOfClients = args.length > 2 ? Integer.parseInt(args[2]) : NUMBER_OF_CLIENTS;
-
-        TcpClientBatch clients = new TcpClientBatch(host, port, numberOfClients);
+        TcpClientBatch clients = new TcpClientBatch(arguments.host, arguments.port, arguments.numberOfClients);
         clients.run();
     }
 }
