@@ -81,7 +81,7 @@ public class TcpServer {
 
         while (isServerActive) {
             try {
-                if (selector.select(SELECT_TIMEOUT_IN_MILLIS) > 0) {
+                if (selector.select(arguments.selectTimeoutInMillis) > 0) {
                     selector.selectedKeys().forEach(this::handleSelectionKey);
                     selector.selectedKeys().clear();
                 }

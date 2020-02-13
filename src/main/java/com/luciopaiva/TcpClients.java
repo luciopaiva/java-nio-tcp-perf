@@ -32,7 +32,7 @@ public class TcpClients {
             createConnectionBatch();
 
             while (activeKeys > 0) {
-                if (selector.select(SELECT_TIMEOUT_IN_MILLIS) > 0) {
+                if (selector.select(arguments.selectTimeoutInMillis) > 0) {
                     for (SelectionKey selectionKey : selector.selectedKeys()) {
                         handleSelectionKey(selectionKey);
                     }

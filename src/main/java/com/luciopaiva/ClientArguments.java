@@ -7,6 +7,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import static com.luciopaiva.Constants.DEFAULT_NUMBER_OF_CLIENTS;
+import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 
 class ClientArguments {
 
@@ -14,13 +15,15 @@ class ClientArguments {
 
     static {
         options.addOption("p", "port", true, "the server port");
-        options.addOption("h", "host", true, "the server host");
+        options.addOption("a", "address", true, "the server host");
         options.addOption("c", "clients", true, "how many clients to spawn");
+        options.addOption("w", "wait", true, "wait time between select()s, in millis");
     }
 
     int port = Constants.SERVER_PORT;
     String host = "127.0.0.1";
     int numberOfClients = DEFAULT_NUMBER_OF_CLIENTS;
+    int selectTimeoutInMillis = SELECT_TIMEOUT_IN_MILLIS;
 
     static ClientArguments parse(String ...args) {
         CommandLineParser parser = new DefaultParser();
@@ -36,6 +39,9 @@ class ClientArguments {
             }
             if (cmd.hasOption("c")) {
                 arguments.numberOfClients = Integer.parseInt(cmd.getOptionValue("c"));
+            }
+            if (cmd.hasOption("w")) {
+                arguments.selectTimeoutInMillis = Integer.parseInt(cmd.getOptionValue("w"));
             }
         } catch (ParseException e) {
             e.printStackTrace();
