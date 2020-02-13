@@ -8,7 +8,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
-import static com.luciopaiva.Constants.SELECT_TIMEOUT;
+import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 
 @SuppressWarnings("FieldCanBeLocal")
 public class TcpClientBatch {
@@ -21,19 +21,19 @@ public class TcpClientBatch {
 
     private int activeKeys;
 
-    public TcpClientBatch(String host, int port, int numberOfClients) throws IOException {
+    private TcpClientBatch(String host, int port, int numberOfClients) throws IOException {
         selector = Selector.open();
         serverAddress = new InetSocketAddress(host, port);
         this.numberOfClients = numberOfClients;
         activeKeys = numberOfClients;
     }
 
-    public void run() {
+    private void run() {
         try {
             createConnectionBatch();
 
             while (activeKeys > 0) {
-                if (selector.select(SELECT_TIMEOUT) > 0) {
+                if (selector.select(SELECT_TIMEOUT_IN_MILLIS) > 0) {
                     for (SelectionKey selectionKey : selector.selectedKeys()) {
                         handleSelectionKey(selectionKey);
                     }

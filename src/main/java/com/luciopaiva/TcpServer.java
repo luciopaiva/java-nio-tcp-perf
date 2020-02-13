@@ -17,7 +17,7 @@ import java.util.HashSet;
 import java.util.Random;
 
 import static com.luciopaiva.Constants.PACKET_SIZE_IN_BYTES;
-import static com.luciopaiva.Constants.SELECT_TIMEOUT;
+import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 import static com.luciopaiva.Constants.SERVER_PORT;
 
 public class TcpServer {
@@ -41,15 +41,19 @@ public class TcpServer {
     private long nextTimeShouldReportMetrics = 0;
     private int countdownToHeader = 0;
 
+    /* metrics */
     private long successfulSends = 0;
     private long partialSends = 0;
     private long failedSends = 0;
+    private double loadFactorSum = 0;
+    private double loadFactorCount = 0;
+    private double maxLoadFactor = 0;
 
-    public TcpServer(int port) throws IOException {
+    private TcpServer(int port) throws IOException {
         this.port = port;
         selector = SelectorProvider.provider().openSelector();
 
-        metricsHeader = " good    | partial | failed   ";
+        metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s", "LF", "max(LF)", "good", "partial", "failed");
 
         // prepare buffer with random data to send
         Random random = new Random(42);
@@ -76,7 +80,7 @@ public class TcpServer {
 
         while (isServerActive) {
             try {
-                if (selector.select(SELECT_TIMEOUT) > 0) {
+                if (selector.select(SELECT_TIMEOUT_IN_MILLIS) > 0) {
                     selector.selectedKeys().forEach(this::handleSelectionKey);
                     selector.selectedKeys().clear();
                 }
@@ -86,6 +90,15 @@ public class TcpServer {
                 if (nextTimeShouldSend <= now) {
                     sendDataToAllClients();
                     nextTimeShouldSend = now + SEND_PERIOD_IN_NANOS;
+
+                    // update load factor metrics
+                    long elapsed = System.nanoTime() - now;
+                    double loadFactor = elapsed / (double) SEND_PERIOD_IN_NANOS;
+                    loadFactorSum += loadFactor;
+                    loadFactorCount++;
+                    if (loadFactor > maxLoadFactor) {
+                        maxLoadFactor = loadFactor;
+                    }
                 }
 
                 if (nextTimeShouldReportMetrics <= now) {
@@ -129,7 +142,10 @@ public class TcpServer {
             countdownToHeader = HEADER_PERIOD_IN_REPORTS;
         }
         countdownToHeader--;
-        System.out.println(String.format(" %7d | %7d | %7d ", successfulSends, partialSends, failedSends));
+        int loadFactor = (int) (100 * (loadFactorSum / loadFactorCount));
+        int maxLoadFactor = (int) (100 * this.maxLoadFactor);
+        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7d ",
+                loadFactor, maxLoadFactor, successfulSends, partialSends, failedSends));
     }
 
     private void handleSelectionKey(SelectionKey selectionKey) {

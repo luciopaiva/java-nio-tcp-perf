@@ -47,6 +47,12 @@ This did not work as the socket channel object is not thread safe, thus not guar
 
 Moreover, establishing a new connection in a separate thread takes an absurd amount of time. The application freezes for seconds. Not sure what happens there, but anyway... fixed by moving everything to the main thread (it is non-blocking, after all).
 
+## Parameters to adjust
+
+- select() wait time: how does this influence the maximum throughput the server can achieve?
+- right now the logic is periodically sending to all clients at once, but this is effectively the bandwidth that can be used. One better approach would be to uniformly spread clients at random in the sending window. Of course, the sending resolution would be higher for lower wait times (see point above);
+- the sending period also obviously limits the maximum bandwidth the server can achieve
+
 ### Useful commands
 
 To prevent TCP ACKs from getting to the server, run this on the client machine:
