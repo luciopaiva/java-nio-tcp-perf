@@ -10,6 +10,7 @@ public class ClientArguments extends CommonArguments {
     public int numberOfClients = DEFAULT_NUMBER_OF_CLIENTS;
 
     private ClientArguments() {
+        super();
         options.addOption("a", "address", true, "the server host");
         options.addOption("c", "clients", true, "how many clients to spawn");
     }

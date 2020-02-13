@@ -18,8 +18,6 @@ import java.nio.channels.spi.SelectorProvider;
 import java.util.HashSet;
 import java.util.Random;
 
-import static com.luciopaiva.Constants.PACKET_SIZE_IN_BYTES;
-
 public class TcpServer {
 
     private static final String ADDRESS_IPV4_ANY = "0.0.0.0";
@@ -60,7 +58,7 @@ public class TcpServer {
 
         // prepare buffer with random data to send
         Random random = new Random(42);
-        buffer = ByteBuffer.allocate(PACKET_SIZE_IN_BYTES);
+        buffer = ByteBuffer.allocate(arguments.packetSizeInBytes);
         while (buffer.hasRemaining()) {
             buffer.putLong(random.nextLong());
         }
@@ -120,7 +118,7 @@ public class TcpServer {
         for (SocketChannel client : clientSocketChannels) {
             try {
                 long written = client.write(buffer);
-                if (written == PACKET_SIZE_IN_BYTES) {
+                if (written == arguments.packetSizeInBytes) {
                     successfulSends++;
                 } else if (written == 0) {
                     failedSends++;
