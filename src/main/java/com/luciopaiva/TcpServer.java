@@ -21,8 +21,6 @@ import java.util.Random;
 public class TcpServer {
 
     private static final String ADDRESS_IPV4_ANY = "0.0.0.0";
-    private static final long SEND_PERIOD_IN_MILLIS = 200;
-    private static final long SEND_PERIOD_IN_NANOS = SEND_PERIOD_IN_MILLIS * 1_000_000;
     private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
     private final Selector selector;
@@ -32,6 +30,7 @@ public class TcpServer {
     private final String metricsHeader;
     private final ServerArguments arguments;
     private final long metricsReportPeriodInNanos;
+    private final long sendPeriodPeriodInNanos;
 
     private boolean isServerActive = true;
     private long nextTimeShouldSend = 0;
@@ -50,6 +49,7 @@ public class TcpServer {
     private TcpServer(ServerArguments arguments) throws IOException {
         this.arguments = arguments;
         metricsReportPeriodInNanos = arguments.metricsPeriodInMillis * 1_000_000;
+        sendPeriodPeriodInNanos = arguments.sendPeriodInMillis * 1_000_000;
 
         selector = SelectorProvider.provider().openSelector();
 
@@ -90,11 +90,11 @@ public class TcpServer {
 
                 if (nextTimeShouldSend <= now) {
                     sendDataToAllClients();
-                    nextTimeShouldSend = now + SEND_PERIOD_IN_NANOS;
+                    nextTimeShouldSend = now + sendPeriodPeriodInNanos;
 
                     // update load factor metrics
                     long elapsed = System.nanoTime() - now;
-                    double loadFactor = elapsed / (double) SEND_PERIOD_IN_NANOS;
+                    double loadFactor = elapsed / (double) sendPeriodPeriodInNanos;
                     loadFactorSum += loadFactor;
                     loadFactorCount++;
                     if (loadFactor > maxLoadFactor) {

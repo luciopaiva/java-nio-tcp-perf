@@ -9,4 +9,5 @@ public class Constants {
     public static final int PACKET_SIZE_IN_BYTES = 1024;
     public static final int DEFAULT_NUMBER_OF_CLIENTS = 10;
     public static final long METRICS_REPORT_PERIOD_IN_MILLIS = 1000;
+    public static final long SEND_PERIOD_IN_MILLIS = 200;
 }
