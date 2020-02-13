@@ -146,9 +146,16 @@ public class TcpServer {
         System.out.println(String.format(" %7d | %7d | %7d | %7d | %7d | %7s ",
                 loadFactor, maxLoadFactor, successfulSends, partialSends, failedSends, Utils.bytesToStr(bytesSent)));
 
+        resetMetrics();
+    }
+
+    private void resetMetrics() {
         successfulSends = 0;
         partialSends = 0;
         failedSends = 0;
+        loadFactorSum = 0;
+        loadFactorCount = 0;
+        maxLoadFactor = 0;
         bytesSent = 0;
     }
 
