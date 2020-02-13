@@ -48,12 +48,14 @@ public class TcpServer {
     private double loadFactorSum = 0;
     private double loadFactorCount = 0;
     private double maxLoadFactor = 0;
+    private long bytesSent = 0;
 
     private TcpServer(int port) throws IOException {
         this.port = port;
         selector = SelectorProvider.provider().openSelector();
 
-        metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s", "LF", "max(LF)", "good", "partial", "failed");
+        metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s | %7s", "LF",
+                "max(LF)", "good", "partial", "failed", "out");
 
         // prepare buffer with random data to send
         Random random = new Random(42);
@@ -114,10 +116,6 @@ public class TcpServer {
     }
 
     private void sendDataToAllClients() {
-        successfulSends = 0;
-        partialSends = 0;
-        failedSends = 0;
-
         for (SocketChannel client : clientSocketChannels) {
             try {
                 long written = client.write(buffer);
@@ -128,6 +126,7 @@ public class TcpServer {
                 } else {
                     partialSends++;
                 }
+                bytesSent += written;
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
@@ -144,8 +143,13 @@ public class TcpServer {
         countdownToHeader--;
         int loadFactor = (int) (100 * (loadFactorSum / loadFactorCount));
         int maxLoadFactor = (int) (100 * this.maxLoadFactor);
-        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7d ",
-                loadFactor, maxLoadFactor, successfulSends, partialSends, failedSends));
+        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7d | %7s ",
+                loadFactor, maxLoadFactor, successfulSends, partialSends, failedSends, Utils.bytesToStr(bytesSent)));
+
+        successfulSends = 0;
+        partialSends = 0;
+        failedSends = 0;
+        bytesSent = 0;
     }
 
     private void handleSelectionKey(SelectionKey selectionKey) {
