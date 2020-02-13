@@ -1,5 +1,6 @@
-package com.luciopaiva;
+package com.luciopaiva.arguments;
 
+import com.luciopaiva.Constants;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -10,7 +11,7 @@ import org.apache.commons.cli.ParseException;
 import static com.luciopaiva.Constants.DEFAULT_NUMBER_OF_CLIENTS;
 import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 
-class ClientArguments {
+public class ClientArguments {
 
     private static final Options options = new Options();
 
@@ -22,12 +23,12 @@ class ClientArguments {
         options.addOption("w", "wait", true, "wait time between select()s, in millis");
     }
 
-    int port = Constants.SERVER_PORT;
-    String host = "127.0.0.1";
-    int numberOfClients = DEFAULT_NUMBER_OF_CLIENTS;
-    int selectTimeoutInMillis = SELECT_TIMEOUT_IN_MILLIS;
+    public int port = Constants.SERVER_PORT;
+    public String host = "127.0.0.1";
+    public int numberOfClients = DEFAULT_NUMBER_OF_CLIENTS;
+    public int selectTimeoutInMillis = SELECT_TIMEOUT_IN_MILLIS;
 
-    static ClientArguments parse(String ...args) {
+    public static ClientArguments parse(String ...args) {
         CommandLineParser parser = new DefaultParser();
         ClientArguments arguments = new ClientArguments();
 

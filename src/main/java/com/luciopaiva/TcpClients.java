@@ -1,5 +1,7 @@
 package com.luciopaiva;
 
+import com.luciopaiva.arguments.ClientArguments;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -7,8 +9,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-
-import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 
 @SuppressWarnings("FieldCanBeLocal")
 public class TcpClients {

@@ -1,5 +1,6 @@
-package com.luciopaiva;
+package com.luciopaiva.arguments;
 
+import com.luciopaiva.Constants;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -10,7 +11,7 @@ import org.apache.commons.cli.ParseException;
 import static com.luciopaiva.Constants.METRICS_REPORT_PERIOD_IN_MILLIS;
 import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 
-class ServerArguments {
+public class ServerArguments {
 
     private static final Options options = new Options();
 
@@ -21,11 +22,11 @@ class ServerArguments {
         options.addOption("r", "report-period", true, "period for printing metrics, in millis");
     }
 
-    int port = Constants.SERVER_PORT;
-    int selectTimeoutInMillis = SELECT_TIMEOUT_IN_MILLIS;
-    long metricsPeriodInMillis = METRICS_REPORT_PERIOD_IN_MILLIS;
+    public int port = Constants.SERVER_PORT;
+    public int selectTimeoutInMillis = SELECT_TIMEOUT_IN_MILLIS;
+    public long metricsPeriodInMillis = METRICS_REPORT_PERIOD_IN_MILLIS;
 
-    static ServerArguments parse(String ...args) {
+    public static ServerArguments parse(String ...args) {
         CommandLineParser parser = new DefaultParser();
         ServerArguments arguments = new ServerArguments();
 
