@@ -15,15 +15,16 @@ public class TcpClientBatch {
 
     private final Selector selector;
     private final InetSocketAddress serverAddress;
-    private final int numberOfClients;
+    private final ClientArguments arguments;
 
     private int activeKeys;
 
-    private TcpClientBatch(String host, int port, int numberOfClients) throws IOException {
+    private TcpClientBatch(ClientArguments arguments) throws IOException {
+        this.arguments = arguments;
+
         selector = Selector.open();
-        serverAddress = new InetSocketAddress(host, port);
-        this.numberOfClients = numberOfClients;
-        activeKeys = numberOfClients;
+        serverAddress = new InetSocketAddress(arguments.host, arguments.port);
+        activeKeys = arguments.numberOfClients;
     }
 
     private void run() {
@@ -100,7 +101,7 @@ public class TcpClientBatch {
     }
 
     private void createConnectionBatch() throws IOException {
-        for (int i = 0; i < numberOfClients; i++) {
+        for (int i = 0; i < arguments.numberOfClients; i++) {
             createSocketChannel();
         }
     }
@@ -120,7 +121,7 @@ public class TcpClientBatch {
 
         ClientArguments arguments = ClientArguments.parse(args);
 
-        TcpClientBatch clients = new TcpClientBatch(arguments.host, arguments.port, arguments.numberOfClients);
+        TcpClientBatch clients = new TcpClientBatch(arguments);
         clients.run();
     }
 }

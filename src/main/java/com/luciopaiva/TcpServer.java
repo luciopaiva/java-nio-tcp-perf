@@ -28,12 +28,12 @@ public class TcpServer {
     private static final long METRICS_REPORT_PERIOD_IN_NANOS = METRICS_REPORT_PERIOD_IN_MILLIS * 1_000_000;
     private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
-    private final int port;
     private final Selector selector;
     private final ServerSocketChannel tcpServerSocketChannel;
     private final HashSet<SocketChannel> clientSocketChannels;
     private final ByteBuffer buffer;
     private final String metricsHeader;
+    private final ServerArguments arguments;
 
     private boolean isServerActive = true;
     private long nextTimeShouldSend = 0;
@@ -49,8 +49,8 @@ public class TcpServer {
     private double maxLoadFactor = 0;
     private long bytesSent = 0;
 
-    private TcpServer(int port) throws IOException {
-        this.port = port;
+    private TcpServer(ServerArguments arguments) throws IOException {
+        this.arguments = arguments;
         selector = SelectorProvider.provider().openSelector();
 
         metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s | %7s", "LF",
@@ -74,7 +74,7 @@ public class TcpServer {
 
     private void run() throws IOException {
         InetAddress host = InetAddress.getByName(ADDRESS_IPV4_ANY);
-        this.tcpServerSocketChannel.bind(new InetSocketAddress(host, port));
+        this.tcpServerSocketChannel.bind(new InetSocketAddress(host, arguments.port));
 
         System.out.println(String.format("Server started at %s. Entering main loop...",
                 Utils.getAddressStr(tcpServerSocketChannel.getLocalAddress())));
@@ -223,7 +223,7 @@ public class TcpServer {
     public static void main(String ...args) throws IOException {
         ServerArguments arguments = ServerArguments.parse(args);
 
-        TcpServer server = new TcpServer(arguments.port);
+        TcpServer server = new TcpServer(arguments);
         server.run();
     }
 }
