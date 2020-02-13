@@ -1,9 +1,9 @@
 
-# Java TCP performance test
+# Java TCP load and performance test
 
 ![](screenshots/screenshot-20200124-0200.png)
 
-This is an experiment to test some performance aspects of a Java TCP server.
+This is an experiment to test some performance aspects of a Java NIO TCP server.
 
 It is basically made of two parts: TcpServer and TcpClientBatch. The former runs a vanilla NIO non-blocking server and the latter spawns a certain number of NIO, also non-blocking, TCP clients which will connect to the server part.
 
@@ -68,3 +68,7 @@ To delete a rule (e.g., rule 1):
 Run this to observe client sockets and their queues:
 
     watch -n 1 'cat /proc/net/tcp | grep 0BD0'
+
+### Relevant read
+
+https://en.wikipedia.org/wiki/Software_performance_testing
