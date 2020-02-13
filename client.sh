@@ -6,4 +6,4 @@ if [ -d "$BUILD_DIR" ]; then
   cd $BUILD_DIR || exit
 fi
 
-java -Djava.net.preferIPv4Stack=true -cp tcp-java-perf-1.0-SNAPSHOT.jar com.luciopaiva.TcpClientBatch "$@"
+java -Djava.net.preferIPv4Stack=true -cp tcp-java-perf-1.0-SNAPSHOT.jar com.luciopaiva.TcpClients "$@"

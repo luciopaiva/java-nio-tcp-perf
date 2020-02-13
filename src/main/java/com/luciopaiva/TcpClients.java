@@ -11,7 +11,7 @@ import java.nio.channels.SocketChannel;
 import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 
 @SuppressWarnings("FieldCanBeLocal")
-public class TcpClientBatch {
+public class TcpClients {
 
     private final Selector selector;
     private final InetSocketAddress serverAddress;
@@ -19,7 +19,7 @@ public class TcpClientBatch {
 
     private int activeKeys;
 
-    private TcpClientBatch(ClientArguments arguments) throws IOException {
+    private TcpClients(ClientArguments arguments) throws IOException {
         this.arguments = arguments;
 
         selector = Selector.open();
@@ -121,7 +121,7 @@ public class TcpClientBatch {
 
         ClientArguments arguments = ClientArguments.parse(args);
 
-        TcpClientBatch clients = new TcpClientBatch(arguments);
+        TcpClients clients = new TcpClients(arguments);
         clients.run();
     }
 }
