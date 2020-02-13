@@ -1,12 +1,10 @@
 plugins {
     id 'java'
-    id 'application'
 }
 
 group 'com.luciopaiva'
 version '1.0-SNAPSHOT'
 sourceCompatibility = 1.8
-mainClassName = 'com.luciopaiva.TcpServer'
 
 repositories {
     mavenCentral()
@@ -19,13 +17,11 @@ dependencies {
 
 jar {
     manifest {
-        attributes 'Main-Class': mainClassName
+        attributes 'Main-Class': 'com.luciopaiva.TcpServer'
     }
 
     // adds dependencies to jar (https://stackoverflow.com/a/4894308/778272)
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
-
-    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
 }
