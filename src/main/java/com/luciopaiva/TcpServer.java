@@ -17,15 +17,12 @@ import java.util.HashSet;
 import java.util.Random;
 
 import static com.luciopaiva.Constants.PACKET_SIZE_IN_BYTES;
-import static com.luciopaiva.Constants.SELECT_TIMEOUT_IN_MILLIS;
 
 public class TcpServer {
 
     private static final String ADDRESS_IPV4_ANY = "0.0.0.0";
     private static final long SEND_PERIOD_IN_MILLIS = 200;
     private static final long SEND_PERIOD_IN_NANOS = SEND_PERIOD_IN_MILLIS * 1_000_000;
-    private static final long METRICS_REPORT_PERIOD_IN_MILLIS = 1000;
-    private static final long METRICS_REPORT_PERIOD_IN_NANOS = METRICS_REPORT_PERIOD_IN_MILLIS * 1_000_000;
     private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
     private final Selector selector;
@@ -34,6 +31,7 @@ public class TcpServer {
     private final ByteBuffer buffer;
     private final String metricsHeader;
     private final ServerArguments arguments;
+    private final long metricsReportPeriodInNanos;
 
     private boolean isServerActive = true;
     private long nextTimeShouldSend = 0;
@@ -51,6 +49,8 @@ public class TcpServer {
 
     private TcpServer(ServerArguments arguments) throws IOException {
         this.arguments = arguments;
+        metricsReportPeriodInNanos = arguments.metricsPeriodInMillis * 1_000_000;
+
         selector = SelectorProvider.provider().openSelector();
 
         metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s | %7s", "LF",
@@ -104,7 +104,7 @@ public class TcpServer {
 
                 if (nextTimeShouldReportMetrics <= now) {
                     reportMetrics();
-                    nextTimeShouldReportMetrics = now + METRICS_REPORT_PERIOD_IN_NANOS;
+                    nextTimeShouldReportMetrics = now + metricsReportPeriodInNanos;
                 }
 
             } catch (ClosedSelectorException e) {

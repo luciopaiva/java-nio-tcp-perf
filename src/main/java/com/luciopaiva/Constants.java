@@ -8,4 +8,5 @@ class Constants {
     /** must be a power of two and greater than a long */
     static final int PACKET_SIZE_IN_BYTES = 1024;
     static final int DEFAULT_NUMBER_OF_CLIENTS = 10;
+    static final long METRICS_REPORT_PERIOD_IN_MILLIS = 1000;
 }
