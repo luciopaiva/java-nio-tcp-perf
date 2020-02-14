@@ -44,6 +44,7 @@ public class TcpServer {
     private int nextSlotIndex;
 
     private boolean isServerActive = true;
+    private int activeClientsCount = 0;
     private long nextTimeShouldSend = 0;
     private long nextTimeShouldReportMetrics = 0;
     private int countdownToHeader = 0;
@@ -54,6 +55,7 @@ public class TcpServer {
     private long failedSends = 0;
     private long timeSpentSendingSomethingInNanos = 0;
     private long bytesSent = 0;
+    private long bytesReceived = 0;
 
     private TcpServer(ServerArguments arguments) throws IOException {
         this.arguments = arguments;
@@ -73,8 +75,11 @@ public class TcpServer {
         // burst strategy
         clientSocketChannels = new HashSet<>();
 
-        metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s",
-                "LF", "good", "partial", "failed", "out");
+        String hr = new String(new char[7 * 10 - 1]).replace('\0', '-');
+        metricsHeader = hr + '\n' +
+                String.format(" %7s | %7s | %7s | %7s | %7s | %7s | %7s",
+                "LF", "clients", "good", "partial", "failed", "in", "out") +
+                '\n' + hr;
 
         // prepare buffer with random data to send
         Random random = new Random(42);
@@ -167,8 +172,7 @@ public class TcpServer {
             }
             bytesSent += written;
         } catch (IOException e) {
-            // ToDo turn this into a metric (possibly increment failedSends), suppress log and possibly close socket
-            e.printStackTrace();
+            failedSends++;
         } finally {
             buffer.position(0);  // no matter how much we've read, move the pointer back to the start
         }
@@ -181,8 +185,9 @@ public class TcpServer {
         }
         countdownToHeader--;
         int loadFactor = (int) (100 * (timeSpentSendingSomethingInNanos / (double) metricsReportPeriodInNanos));
-        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7s ",
-                loadFactor, successfulSends, partialSends, failedSends, Utils.bytesToStr(bytesSent)));
+        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7d | %7s | %7s ",
+                loadFactor, activeClientsCount, successfulSends, partialSends, failedSends,
+                Utils.bytesToStr(bytesReceived), Utils.bytesToStr(bytesSent)));
 
         resetMetrics();
     }
@@ -193,6 +198,7 @@ public class TcpServer {
         failedSends = 0;
         timeSpentSendingSomethingInNanos = 0;
         bytesSent = 0;
+        bytesReceived = 0;
     }
 
     private void handleSelectionKey(SelectionKey selectionKey) {
@@ -223,13 +229,9 @@ public class TcpServer {
         ByteBuffer buffer = ByteBuffer.allocate(64);
         int read = socketChannel.read(buffer);
         if (read < 0) {
-            System.out.println("Nothing to read, socket probably already closed.");
             closeKey(selectionKey);
-        } else if (read == 0) {
-            System.out.println("Received read notification but there was nothing there.");
         } else {
-            // ToDo turn this into a metric and suppress log
-            System.out.println(String.format("Read %d bytes from client socket.", read));
+            bytesReceived += read;
         }
     }
 
@@ -251,7 +253,12 @@ public class TcpServer {
             clientSocketChannels.add(socketChannel);
         }
 
-        System.out.println(String.format("Connection accepted (sndbuf: %d, recvbuf: %d).", sendBufferLength, recvBufferLength));
+        activeClientsCount++;
+
+        if (arguments.debug) {
+            System.out.println(String.format("Connection accepted (sndbuf: %d, recvbuf: %d).",
+                    sendBufferLength, recvBufferLength));
+        }
     }
 
     private void closeKey(SelectionKey selectionKey) {
@@ -269,6 +276,7 @@ public class TcpServer {
                 clientSocketChannels.remove(socketChannel);
             }
             selectionKey.cancel();
+            activeClientsCount--;
         }
     }
 

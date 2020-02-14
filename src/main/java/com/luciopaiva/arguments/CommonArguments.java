@@ -14,10 +14,12 @@ class CommonArguments {
 
     final Options options = new Options();
 
+    public boolean debug = false;
     public int port = Constants.SERVER_PORT;
     public int selectTimeoutInMillis = SELECT_TIMEOUT_IN_MILLIS;
 
     CommonArguments() {
+        options.addOption("d", "debug", false, "show debug logs");
         options.addOption("h", "help", false, "show help");
         options.addOption("p", "port", true, "the server port");
         options.addOption("w", "wait", true, "wait time between select()s, in millis");
@@ -38,6 +40,8 @@ class CommonArguments {
                 arguments.showHelp();
                 System.exit(0);
             }
+
+            arguments.debug = cmd.hasOption("d");
 
             if (cmd.hasOption("p")) {
                 arguments.port = Integer.parseInt(cmd.getOptionValue("p"));
