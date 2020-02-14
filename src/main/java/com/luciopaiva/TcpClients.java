@@ -24,6 +24,9 @@ public class TcpClients {
     private long nextTimeShouldReportMetrics;
 
     private long bytesReceived;
+    private long connectedClients;
+    private long connectionSucceeded;
+    private long connectionFailed;
 
     private TcpClients(ClientArguments arguments) throws IOException {
         this.arguments = arguments;
@@ -32,6 +35,8 @@ public class TcpClients {
 
         reporter = new MetricsReporter();
         reporter.addField("clients", 7, "d");
+        reporter.addField("connect", 7, "d");
+        reporter.addField("confail", 7, "d");
         reporter.addField("in", 7, "s");
 
         selector = Selector.open();
@@ -67,11 +72,13 @@ public class TcpClients {
     }
 
     private void reportMetrics() {
-        reporter.report(activeKeys, Utils.bytesToStr(bytesReceived));
+        reporter.report(connectedClients, connectionSucceeded, connectionFailed, Utils.bytesToStr(bytesReceived));
         resetMetrics();
     }
 
     private void resetMetrics() {
+        connectionSucceeded = 0;
+        connectionFailed = 0;
         bytesReceived = 0;
     }
 
@@ -88,14 +95,18 @@ public class TcpClients {
                     // unregister for OP_CONNECT (important otherwise select() will return immediately),
                     // register for OP_READ
                     socketChannel.register(selector, SelectionKey.OP_READ);
+                    connectionSucceeded++;
+                    connectedClients++;
                 } else {
                     System.err.println("Error establishing socket connection.");
+                    connectionFailed++;
                 }
             } catch (IOException e) {
                 if (arguments.debug) {
                     System.err.println("Connection failed: " + e.getMessage());
                 }
                 activeKeys--;
+                connectionFailed++;
             }
         } else if (selectionKey.isReadable()) {
             try {
@@ -139,6 +150,7 @@ public class TcpClients {
         } finally {
             selectionKey.cancel();
             activeKeys--;
+            connectedClients--;
         }
         if (arguments.debug) {
             System.out.println("Key closed. Keys still active: " + activeKeys);
