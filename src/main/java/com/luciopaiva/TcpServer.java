@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.LongConsumer;
 
 public class TcpServer {
 
@@ -36,6 +37,7 @@ public class TcpServer {
     private final long metricsReportPeriodInNanos;
     private final long sendPeriodPeriodInNanos;
     private final long sendPeriodSlotDeltaInNanos;
+    private final LongConsumer sendDataToClients;
 
     // uniform send strategy
     private final List<HashSet<SocketChannel>> sendSlots;
@@ -65,15 +67,24 @@ public class TcpServer {
 
         selector = SelectorProvider.provider().openSelector();
 
-        // uniform strategy
-        sendSlots = new ArrayList<>(Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS);
-        for (int i = 0; i < Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS; i++) {
-            sendSlots.add(new HashSet<>());
-        }
-        slotIndexBySocketChannel = new HashMap<>();
+        if (arguments.sendStrategy == Constants.SendStrategy.Burst) {
+            clientSocketChannels = new HashSet<>();
+            sendDataToClients = this::sendDataToAllClients;
 
-        // burst strategy
-        clientSocketChannels = new HashSet<>();
+            // nullify unnecessary members
+            sendSlots = null;
+            slotIndexBySocketChannel = null;
+        } else {
+            sendSlots = new ArrayList<>(Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS);
+            for (int i = 0; i < Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS; i++) {
+                sendSlots.add(new HashSet<>());
+            }
+            slotIndexBySocketChannel = new HashMap<>();
+            sendDataToClients = this::sendDataToClientInNextSlot;
+
+            // nullify unnecessary members
+            clientSocketChannels = null;
+        }
 
         String hr = new String(new char[7 * 10 - 1]).replace('\0', '-');
         metricsHeader = hr + '\n' +
@@ -114,11 +125,7 @@ public class TcpServer {
                 long now = System.nanoTime();
 
                 if (nextTimeShouldSend <= now) {
-                    if (arguments.sendStrategy == Constants.SendStrategy.Burst) {
-                        sendDataToAllClients(now);
-                    } else {  // uniform strategy
-                        sendDataToClientInNextSlot(now);
-                    }
+                    sendDataToClients.accept(now);  // call intended strategy
                 }
 
                 if (nextTimeShouldReportMetrics <= now) {
