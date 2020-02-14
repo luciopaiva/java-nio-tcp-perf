@@ -41,6 +41,7 @@ public class TcpServer {
     private final LongConsumer sendDataToClients;
     private final Consumer<SocketChannel> acceptNewTcpConnection;
     private final Consumer<SocketChannel> doCloseKey;
+    private final ByteBuffer receiveBuffer;
 
     // uniform send strategy
     private final List<HashSet<SocketChannel>> sendSlots;
@@ -69,6 +70,7 @@ public class TcpServer {
         sendPeriodSlotDeltaInNanos = sendPeriodPeriodInNanos / Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS;
 
         selector = SelectorProvider.provider().openSelector();
+        receiveBuffer = ByteBuffer.allocate(Constants.PACKET_SIZE_IN_BYTES);
 
         if (arguments.sendStrategy == Constants.SendStrategy.Burst) {
             clientSocketChannels = new HashSet<>();
@@ -239,13 +241,17 @@ public class TcpServer {
     private void readFromKey(SelectionKey selectionKey) throws IOException {
         SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
 
-        // ToDo remove this buffer creation from here
-        ByteBuffer buffer = ByteBuffer.allocate(64);
-        int read = socketChannel.read(buffer);
-        if (read < 0) {
-            closeKey(selectionKey);
-        } else {
-            bytesReceived += read;
+        while (true) {
+            receiveBuffer.clear();
+            int read = socketChannel.read(receiveBuffer);
+            if (read < 0) {
+                closeKey(selectionKey);
+                break;
+            } else if (read == 0) {
+                break;  // nothing else to read
+            } else {
+                bytesReceived += read;
+            }
         }
     }
 
