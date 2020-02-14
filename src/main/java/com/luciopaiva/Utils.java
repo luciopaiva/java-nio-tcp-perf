@@ -9,7 +9,6 @@ class Utils {
     private final static long HUNDRED_KILO = 100 * KILO;
     private final static long MEGA = KILO * KILO;
     private final static long HUNDRED_MEGA = 100 * MEGA;
-    private final static long GIGA = KILO * MEGA;
 
     static String getAddressStr(SocketAddress socketAddress) {
         InetSocketAddress address = (InetSocketAddress) socketAddress;
