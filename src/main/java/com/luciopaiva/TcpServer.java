@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 public class TcpServer {
@@ -38,6 +39,8 @@ public class TcpServer {
     private final long sendPeriodPeriodInNanos;
     private final long sendPeriodSlotDeltaInNanos;
     private final LongConsumer sendDataToClients;
+    private final Consumer<SocketChannel> acceptNewTcpConnection;
+    private final Consumer<SocketChannel> doCloseKey;
 
     // uniform send strategy
     private final List<HashSet<SocketChannel>> sendSlots;
@@ -70,6 +73,8 @@ public class TcpServer {
         if (arguments.sendStrategy == Constants.SendStrategy.Burst) {
             clientSocketChannels = new HashSet<>();
             sendDataToClients = this::sendDataToAllClients;
+            acceptNewTcpConnection = this::acceptNewTcpConnectionBurstStrategy;
+            doCloseKey = this::closeKeyBurstStrategy;
 
             // nullify unnecessary members
             sendSlots = null;
@@ -81,6 +86,8 @@ public class TcpServer {
             }
             slotIndexBySocketChannel = new HashMap<>();
             sendDataToClients = this::sendDataToClientInNextSlot;
+            acceptNewTcpConnection = this::acceptNewTcpConnectionUniformStrategy;
+            doCloseKey = this::closeKeyUniformStrategy;
 
             // nullify unnecessary members
             clientSocketChannels = null;
@@ -251,15 +258,7 @@ public class TcpServer {
         int sendBufferLength = socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
         int recvBufferLength = socketChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 
-        if (arguments.sendStrategy == Constants.SendStrategy.Uniform) {
-            // picks a random slot and adds the client there
-            int index = random.nextInt(sendSlots.size());
-            sendSlots.get(index).add(socketChannel);
-            slotIndexBySocketChannel.put(socketChannel, index);
-        } else {
-            clientSocketChannels.add(socketChannel);
-        }
-
+        acceptNewTcpConnection.accept(socketChannel);
         activeClientsCount++;
 
         if (arguments.debug) {
@@ -268,22 +267,37 @@ public class TcpServer {
         }
     }
 
+    private void acceptNewTcpConnectionBurstStrategy(SocketChannel socketChannel) {
+        clientSocketChannels.add(socketChannel);
+    }
+
+    private void acceptNewTcpConnectionUniformStrategy(SocketChannel socketChannel) {
+        // picks a random slot and adds the client there
+        int index = random.nextInt(sendSlots.size());
+        sendSlots.get(index).add(socketChannel);
+        slotIndexBySocketChannel.put(socketChannel, index);
+    }
+
     private void closeKey(SelectionKey selectionKey) {
         SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
         try {
             socketChannel.close();
         } catch (IOException ignored) {
         } finally {
-            if (arguments.sendStrategy == Constants.SendStrategy.Uniform) {
-                Integer index = slotIndexBySocketChannel.get(socketChannel);
-                if (index != null) {
-                    sendSlots.get(index).remove(socketChannel);
-                }
-            } else {
-                clientSocketChannels.remove(socketChannel);
-            }
+            doCloseKey.accept(socketChannel);
             selectionKey.cancel();
             activeClientsCount--;
+        }
+    }
+
+    private void closeKeyBurstStrategy(SocketChannel socketChannel) {
+        clientSocketChannels.remove(socketChannel);
+    }
+
+    private void closeKeyUniformStrategy(SocketChannel socketChannel) {
+        Integer index = slotIndexBySocketChannel.get(socketChannel);
+        if (index != null) {
+            sendSlots.get(index).remove(socketChannel);
         }
     }
 
