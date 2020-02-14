@@ -27,13 +27,12 @@ import java.util.function.LongConsumer;
 public class TcpServer {
 
     private static final String ADDRESS_IPV4_ANY = "0.0.0.0";
-    private static final int HEADER_PERIOD_IN_REPORTS = 10;
 
+    private final MetricsReporter reporter;
     private final Selector selector;
     private final ServerSocketChannel tcpServerSocketChannel;
     private final HashSet<SocketChannel> clientSocketChannels;
     private final ByteBuffer buffer;
-    private final String metricsHeader;
     private final ServerArguments arguments;
     private final long metricsReportPeriodInNanos;
     private final long sendPeriodPeriodInNanos;
@@ -53,7 +52,6 @@ public class TcpServer {
     private int activeClientsCount = 0;
     private long nextTimeShouldSend = 0;
     private long nextTimeShouldReportMetrics = 0;
-    private int countdownToHeader = 0;
 
     /* metrics */
     private long successfulSends = 0;
@@ -68,6 +66,15 @@ public class TcpServer {
         metricsReportPeriodInNanos = arguments.metricsPeriodInMillis * 1_000_000;
         sendPeriodPeriodInNanos = arguments.sendPeriodInMillis * 1_000_000;
         sendPeriodSlotDeltaInNanos = sendPeriodPeriodInNanos / Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS;
+
+        reporter = new MetricsReporter();
+        reporter.addField("LF", 7, "d");
+        reporter.addField("clients", 7, "d");
+        reporter.addField("sendcnt", 7, "d");
+        reporter.addField("partial", 7, "d");
+        reporter.addField("failed", 7, "d");
+        reporter.addField("in", 7, "s");
+        reporter.addField("out", 7, "s");
 
         selector = SelectorProvider.provider().openSelector();
         receiveBuffer = ByteBuffer.allocate(Constants.PACKET_SIZE_IN_BYTES);
@@ -94,12 +101,6 @@ public class TcpServer {
             // nullify unnecessary members
             clientSocketChannels = null;
         }
-
-        String hr = new String(new char[7 * 10 - 1]).replace('\0', '-');
-        metricsHeader = hr + '\n' +
-                String.format(" %7s | %7s | %7s | %7s | %7s | %7s | %7s",
-                "LF", "clients", "good", "partial", "failed", "in", "out") +
-                '\n' + hr;
 
         // prepare buffer with random data to send
         Random random = new Random(42);
@@ -195,15 +196,9 @@ public class TcpServer {
     }
 
     private void reportMetrics() {
-        if (countdownToHeader == 0) {
-            System.out.println(metricsHeader);
-            countdownToHeader = HEADER_PERIOD_IN_REPORTS;
-        }
-        countdownToHeader--;
         int loadFactor = (int) (100 * (timeSpentSendingSomethingInNanos / (double) metricsReportPeriodInNanos));
-        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7d | %7s | %7s ",
-                loadFactor, activeClientsCount, successfulSends, partialSends, failedSends,
-                Utils.bytesToStr(bytesReceived), Utils.bytesToStr(bytesSent)));
+        reporter.report(loadFactor, activeClientsCount, successfulSends, partialSends, failedSends,
+                Utils.bytesToStr(bytesReceived), Utils.bytesToStr(bytesSent));
 
         resetMetrics();
     }
