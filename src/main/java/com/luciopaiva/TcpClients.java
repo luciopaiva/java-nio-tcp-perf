@@ -53,7 +53,9 @@ public class TcpClients {
             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
             try {
                 if (socketChannel.finishConnect()) {
-                    System.out.println("Connected.");
+                    if (arguments.debug) {
+                        System.out.println("Connected.");
+                    }
                     // unregister for OP_CONNECT (important otherwise select() will return immediately),
                     // register for OP_READ
                     socketChannel.register(selector, SelectionKey.OP_READ);
@@ -61,7 +63,9 @@ public class TcpClients {
                     System.err.println("Error establishing socket connection.");
                 }
             } catch (IOException e) {
-                System.err.println("Connection failed: " + e.getMessage());
+                if (arguments.debug) {
+                    System.err.println("Connection failed: " + e.getMessage());
+                }
                 activeKeys--;
             }
         } else if (selectionKey.isReadable()) {
@@ -83,7 +87,9 @@ public class TcpClients {
         ByteBuffer buffer = ByteBuffer.allocate(64);
         int read = socketChannel.read(buffer);
         if (read < 0) {
-            System.out.println("Nothing to read, socket probably already closed");
+            if (arguments.debug) {
+                System.out.println("Nothing to read, socket probably already closed");
+            }
             closeKey(selectionKey);
         }
     }
@@ -97,7 +103,9 @@ public class TcpClients {
             selectionKey.cancel();
             activeKeys--;
         }
-        System.out.println("Key closed. Keys still active: " + activeKeys);
+        if (arguments.debug) {
+            System.out.println("Key closed. Keys still active: " + activeKeys);
+        }
     }
 
     private void createConnectionBatch() throws IOException {
@@ -112,7 +120,10 @@ public class TcpClients {
         socketChannel.register(selector, SelectionKey.OP_CONNECT);
         int sendBufferLength = socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
         int recvBufferLength = socketChannel.getOption(StandardSocketOptions.SO_RCVBUF);
-        System.out.println(String.format("Creating new socket (sndbuf: %d, recvbuf: %d)...", sendBufferLength, recvBufferLength));
+        if (arguments.debug) {
+            System.out.println(String.format("Creating new socket (sndbuf: %d, recvbuf: %d)...",
+                    sendBufferLength, recvBufferLength));
+        }
         socketChannel.connect(serverAddress);
     }
 
