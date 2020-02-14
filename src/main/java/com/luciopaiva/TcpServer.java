@@ -15,7 +15,11 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class TcpServer {
@@ -31,6 +35,13 @@ public class TcpServer {
     private final ServerArguments arguments;
     private final long metricsReportPeriodInNanos;
     private final long sendPeriodPeriodInNanos;
+    private final long sendPeriodSlotDeltaInNanos;
+
+    // uniform send strategy
+    private final List<HashSet<SocketChannel>> sendSlots;
+    private final Map<SocketChannel, Integer> slotIndexBySocketChannel;
+    private final Random random = new Random(42);
+    private int nextSlotIndex;
 
     private boolean isServerActive = true;
     private long nextTimeShouldSend = 0;
@@ -41,20 +52,29 @@ public class TcpServer {
     private long successfulSends = 0;
     private long partialSends = 0;
     private long failedSends = 0;
-    private double loadFactorSum = 0;
-    private double loadFactorCount = 0;
-    private double maxLoadFactor = 0;
+    private long timeSpentSendingSomethingInNanos = 0;
     private long bytesSent = 0;
 
     private TcpServer(ServerArguments arguments) throws IOException {
         this.arguments = arguments;
         metricsReportPeriodInNanos = arguments.metricsPeriodInMillis * 1_000_000;
         sendPeriodPeriodInNanos = arguments.sendPeriodInMillis * 1_000_000;
+        sendPeriodSlotDeltaInNanos = sendPeriodPeriodInNanos / Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS;
 
         selector = SelectorProvider.provider().openSelector();
 
-        metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s | %7s", "LF",
-                "max(LF)", "good", "partial", "failed", "out");
+        // uniform strategy
+        sendSlots = new ArrayList<>(Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS);
+        for (int i = 0; i < Constants.UNIFORM_STRATEGY_NUMBER_OF_SLOTS; i++) {
+            sendSlots.add(new HashSet<>());
+        }
+        slotIndexBySocketChannel = new HashMap<>();
+
+        // burst strategy
+        clientSocketChannels = new HashSet<>();
+
+        metricsHeader = String.format(" %7s | %7s | %7s | %7s | %7s",
+                "LF", "good", "partial", "failed", "out");
 
         // prepare buffer with random data to send
         Random random = new Random(42);
@@ -63,8 +83,6 @@ public class TcpServer {
             buffer.putLong(random.nextLong());
         }
         buffer.flip();
-
-        clientSocketChannels = new HashSet<>();
 
         tcpServerSocketChannel = ServerSocketChannel.open();
         tcpServerSocketChannel.configureBlocking(false);
@@ -79,6 +97,8 @@ public class TcpServer {
         System.out.println(String.format("Server started at %s. Entering main loop...",
                 Utils.getAddressStr(tcpServerSocketChannel.getLocalAddress())));
 
+        nextTimeShouldSend = System.nanoTime();
+
         while (isServerActive) {
             try {
                 if (selector.select(arguments.selectTimeoutInMillis) > 0) {
@@ -89,16 +109,10 @@ public class TcpServer {
                 long now = System.nanoTime();
 
                 if (nextTimeShouldSend <= now) {
-                    sendDataToAllClients();
-                    nextTimeShouldSend = now + sendPeriodPeriodInNanos;
-
-                    // update load factor metrics
-                    long elapsed = System.nanoTime() - now;
-                    double loadFactor = elapsed / (double) sendPeriodPeriodInNanos;
-                    loadFactorSum += loadFactor;
-                    loadFactorCount++;
-                    if (loadFactor > maxLoadFactor) {
-                        maxLoadFactor = loadFactor;
+                    if (arguments.sendStrategy == Constants.SendStrategy.Burst) {
+                        sendDataToAllClients(now);
+                    } else {  // uniform strategy
+                        sendDataToClientInNextSlot(now);
                     }
                 }
 
@@ -114,23 +128,49 @@ public class TcpServer {
         }
     }
 
-    private void sendDataToAllClients() {
-        for (SocketChannel client : clientSocketChannels) {
-            try {
-                long written = client.write(buffer);
-                if (written == arguments.packetSizeInBytes) {
-                    successfulSends++;
-                } else if (written == 0) {
-                    failedSends++;
-                } else {
-                    partialSends++;
-                }
-                bytesSent += written;
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                buffer.position(0);  // no matter how much we've read, move the pointer back to the start
+    private void sendDataToClientInNextSlot(long now) {
+        HashSet<SocketChannel> clients = sendSlots.get(nextSlotIndex);
+        if (!clients.isEmpty()) {
+            clients.forEach(this::sendToClient);
+
+            // update load factor metrics
+            long elapsed = System.nanoTime() - now;
+            timeSpentSendingSomethingInNanos += elapsed;
+        }
+
+        nextSlotIndex++;
+        if (nextSlotIndex >= sendSlots.size()) {
+            nextSlotIndex = 0;
+        }
+        nextTimeShouldSend += sendPeriodSlotDeltaInNanos;
+    }
+
+    private void sendDataToAllClients(long now) {
+        clientSocketChannels.forEach(this::sendToClient);
+
+        // update load factor metrics
+        long elapsed = System.nanoTime() - now;
+        timeSpentSendingSomethingInNanos += elapsed;
+
+        nextTimeShouldSend += sendPeriodPeriodInNanos;
+    }
+
+    private void sendToClient(SocketChannel client) {
+        try {
+            long written = client.write(buffer);
+            if (written == arguments.packetSizeInBytes) {
+                successfulSends++;
+            } else if (written == 0) {
+                failedSends++;
+            } else {
+                partialSends++;
             }
+            bytesSent += written;
+        } catch (IOException e) {
+            // ToDo turn this into a metric (possibly increment failedSends), suppress log and possibly close socket
+            e.printStackTrace();
+        } finally {
+            buffer.position(0);  // no matter how much we've read, move the pointer back to the start
         }
     }
 
@@ -140,10 +180,9 @@ public class TcpServer {
             countdownToHeader = HEADER_PERIOD_IN_REPORTS;
         }
         countdownToHeader--;
-        int loadFactor = (int) (100 * (loadFactorSum / loadFactorCount));
-        int maxLoadFactor = (int) (100 * this.maxLoadFactor);
-        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7d | %7s ",
-                loadFactor, maxLoadFactor, successfulSends, partialSends, failedSends, Utils.bytesToStr(bytesSent)));
+        int loadFactor = (int) (100 * (timeSpentSendingSomethingInNanos / (double) metricsReportPeriodInNanos));
+        System.out.println(String.format(" %7d | %7d | %7d | %7d | %7s ",
+                loadFactor, successfulSends, partialSends, failedSends, Utils.bytesToStr(bytesSent)));
 
         resetMetrics();
     }
@@ -152,9 +191,7 @@ public class TcpServer {
         successfulSends = 0;
         partialSends = 0;
         failedSends = 0;
-        loadFactorSum = 0;
-        loadFactorCount = 0;
-        maxLoadFactor = 0;
+        timeSpentSendingSomethingInNanos = 0;
         bytesSent = 0;
     }
 
@@ -191,6 +228,7 @@ public class TcpServer {
         } else if (read == 0) {
             System.out.println("Received read notification but there was nothing there.");
         } else {
+            // ToDo turn this into a metric and suppress log
             System.out.println(String.format("Read %d bytes from client socket.", read));
         }
     }
@@ -204,7 +242,14 @@ public class TcpServer {
         int sendBufferLength = socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
         int recvBufferLength = socketChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 
-        clientSocketChannels.add(socketChannel);
+        if (arguments.sendStrategy == Constants.SendStrategy.Uniform) {
+            // picks a random slot and adds the client there
+            int index = random.nextInt(sendSlots.size());
+            sendSlots.get(index).add(socketChannel);
+            slotIndexBySocketChannel.put(socketChannel, index);
+        } else {
+            clientSocketChannels.add(socketChannel);
+        }
 
         System.out.println(String.format("Connection accepted (sndbuf: %d, recvbuf: %d).", sendBufferLength, recvBufferLength));
     }
@@ -215,7 +260,14 @@ public class TcpServer {
             socketChannel.close();
         } catch (IOException ignored) {
         } finally {
-            clientSocketChannels.remove(socketChannel);
+            if (arguments.sendStrategy == Constants.SendStrategy.Uniform) {
+                Integer index = slotIndexBySocketChannel.get(socketChannel);
+                if (index != null) {
+                    sendSlots.get(index).remove(socketChannel);
+                }
+            } else {
+                clientSocketChannels.remove(socketChannel);
+            }
             selectionKey.cancel();
         }
     }
