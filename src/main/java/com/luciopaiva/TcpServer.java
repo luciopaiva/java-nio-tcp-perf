@@ -229,7 +229,9 @@ public class TcpServer {
         } catch (CancelledKeyException ignored) {
             // key was cancelled, no big deal; just move on
         } catch (IOException e) {
-            System.err.println("Something wrong happened with this key.");
+            if (arguments.debug) {
+                System.err.println("Something wrong happened with this key.");
+            }
         }
     }
 
