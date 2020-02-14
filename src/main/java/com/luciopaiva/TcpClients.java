@@ -16,6 +16,7 @@ public class TcpClients {
     private final Selector selector;
     private final InetSocketAddress serverAddress;
     private final ClientArguments arguments;
+    private final ByteBuffer receiveBuffer;
 
     private int activeKeys;
 
@@ -25,6 +26,7 @@ public class TcpClients {
         selector = Selector.open();
         serverAddress = new InetSocketAddress(arguments.host, arguments.port);
         activeKeys = arguments.numberOfClients;
+        receiveBuffer = ByteBuffer.allocate(Constants.PACKET_SIZE_IN_BYTES);
     }
 
     private void run() {
@@ -83,14 +85,18 @@ public class TcpClients {
     private void readFromKey(SelectionKey selectionKey) throws IOException {
         SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
 
-        // ToDo remove this buffer creation from here
-        ByteBuffer buffer = ByteBuffer.allocate(64);
-        int read = socketChannel.read(buffer);
-        if (read < 0) {
-            if (arguments.debug) {
-                System.out.println("Nothing to read, socket probably already closed");
+        while (true) {
+            receiveBuffer.clear();
+            int read = socketChannel.read(receiveBuffer);
+            if (read < 0) {
+                if (arguments.debug) {
+                    System.out.println("Nothing to read, socket probably already closed");
+                }
+                closeKey(selectionKey);
+                break;
+            } else if (read == 0) {
+                break;  // nothing else to read
             }
-            closeKey(selectionKey);
         }
     }
 
