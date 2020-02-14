@@ -23,6 +23,8 @@ public class TcpClients {
     private int activeKeys;
     private long nextTimeShouldReportMetrics;
 
+    private long bytesReceived;
+
     private TcpClients(ClientArguments arguments) throws IOException {
         this.arguments = arguments;
 
@@ -30,6 +32,7 @@ public class TcpClients {
 
         reporter = new MetricsReporter();
         reporter.addField("clients", 7, "d");
+        reporter.addField("in", 7, "s");
 
         selector = Selector.open();
         serverAddress = new InetSocketAddress(arguments.host, arguments.port);
@@ -52,7 +55,7 @@ public class TcpClients {
                 long now = System.nanoTime();
 
                 if (nextTimeShouldReportMetrics <= now) {
-                    reporter.report(activeKeys);
+                    reportMetrics();
                     nextTimeShouldReportMetrics = now + metricsReportPeriodInNanos;
                 }
             }
@@ -61,6 +64,15 @@ public class TcpClients {
         }
 
         System.out.println("No more active keys. Terminating...");
+    }
+
+    private void reportMetrics() {
+        reporter.report(activeKeys, Utils.bytesToStr(bytesReceived));
+        resetMetrics();
+    }
+
+    private void resetMetrics() {
+        bytesReceived = 0;
     }
 
     private void handleSelectionKey(SelectionKey selectionKey) {
@@ -113,6 +125,8 @@ public class TcpClients {
                 break;
             } else if (read == 0) {
                 break;  // nothing else to read
+            } else {
+                bytesReceived += read;
             }
         }
     }
