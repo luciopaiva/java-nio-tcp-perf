@@ -21,6 +21,7 @@ public class TcpClients {
     private final long metricsReportPeriodInNanos;
 
     private int activeKeys;
+    private long numberOfSocketsToConnect;
     private long nextTimeShouldReportMetrics;
 
     private long bytesReceived;
@@ -33,8 +34,11 @@ public class TcpClients {
 
         metricsReportPeriodInNanos = arguments.metricsPeriodInMillis * 1_000_000;
 
+        numberOfSocketsToConnect = arguments.numberOfClients;
+
         reporter = new MetricsReporter();
         reporter.addField("clients", 7, "d");
+        reporter.addField("waiting", 7, "d");
         reporter.addField("connect", 7, "d");
         reporter.addField("confail", 7, "d");
         reporter.addField("in", 7, "s");
@@ -47,9 +51,11 @@ public class TcpClients {
 
     private void run() {
         try {
-            createConnectionBatch();
-
             while (activeKeys > 0) {
+                if (numberOfSocketsToConnect > 0) {
+                    createConnections();
+                }
+
                 if (selector.select(arguments.selectTimeoutInMillis) > 0) {
                     for (SelectionKey selectionKey : selector.selectedKeys()) {
                         handleSelectionKey(selectionKey);
@@ -72,7 +78,8 @@ public class TcpClients {
     }
 
     private void reportMetrics() {
-        reporter.report(connectedClients, connectionSucceeded, connectionFailed, Utils.bytesToStr(bytesReceived));
+        reporter.report(connectedClients, numberOfSocketsToConnect, connectionSucceeded, connectionFailed,
+                Utils.bytesToStr(bytesReceived));
         resetMetrics();
     }
 
@@ -100,6 +107,7 @@ public class TcpClients {
                 } else {
                     System.err.println("Error establishing socket connection.");
                     connectionFailed++;
+                    numberOfSocketsToConnect++;  // let's keep trying
                 }
             } catch (IOException e) {
                 if (arguments.debug) {
@@ -107,6 +115,7 @@ public class TcpClients {
                 }
                 activeKeys--;
                 connectionFailed++;
+                numberOfSocketsToConnect++;  // let's keep trying
             }
         } else if (selectionKey.isReadable()) {
             try {
@@ -157,9 +166,10 @@ public class TcpClients {
         }
     }
 
-    private void createConnectionBatch() throws IOException {
-        for (int i = 0; i < arguments.numberOfClients; i++) {
+    private void createConnections() throws IOException {
+        for (int i = 0; i < numberOfSocketsToConnect; i++) {
             createSocketChannel();
+            numberOfSocketsToConnect--;
         }
     }
 
