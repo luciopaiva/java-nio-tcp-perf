@@ -74,7 +74,9 @@ public class TcpClients {
             try {
                 readFromKey(selectionKey);
             } catch (IOException e) {
-                System.err.println("Error reading from key. Proceeding to close it...");
+                if (arguments.debug) {
+                    System.err.println("Error reading from key. Proceeding to close it...");
+                }
                 closeKey(selectionKey);
             }
         } else {
