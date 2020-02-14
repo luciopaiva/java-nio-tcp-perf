@@ -13,15 +13,23 @@ import java.nio.channels.SocketChannel;
 @SuppressWarnings("FieldCanBeLocal")
 public class TcpClients {
 
+    private final MetricsReporter reporter;
     private final Selector selector;
     private final InetSocketAddress serverAddress;
     private final ClientArguments arguments;
     private final ByteBuffer receiveBuffer;
+    private final long metricsReportPeriodInNanos;
 
     private int activeKeys;
+    private long nextTimeShouldReportMetrics;
 
     private TcpClients(ClientArguments arguments) throws IOException {
         this.arguments = arguments;
+
+        metricsReportPeriodInNanos = arguments.metricsPeriodInMillis * 1_000_000;
+
+        reporter = new MetricsReporter();
+        reporter.addField("clients", 7, "d");
 
         selector = Selector.open();
         serverAddress = new InetSocketAddress(arguments.host, arguments.port);
@@ -39,6 +47,13 @@ public class TcpClients {
                         handleSelectionKey(selectionKey);
                     }
                     selector.selectedKeys().clear();
+                }
+
+                long now = System.nanoTime();
+
+                if (nextTimeShouldReportMetrics <= now) {
+                    reporter.report(activeKeys);
+                    nextTimeShouldReportMetrics = now + metricsReportPeriodInNanos;
                 }
             }
         } catch (IOException e) {
