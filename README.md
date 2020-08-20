@@ -27,7 +27,7 @@ On the machine you'll build the project, make sure you have Gradle installed. To
     
 Then run both `server.sh` and `client.sh`, each on a separate terminal window. They will look for the jar file, which should be either in the same folder or in `build/libs`.
 
-This will run the server on port 3023 (the default port):
+This will run the server on port 3000 (the default port):
 
     ./server.sh
 
@@ -46,7 +46,7 @@ Both client and server can accept several arguments.
 These are arguments valid for both client and server:
 
 * `-h,--help`: show a brief help message with all arguments available;
-* `-p,--port <PORT>`: which port the server should be listening at (default: 3023);
+* `-p,--port <PORT>`: which port the server should be listening at (default: 3000);
 * `-d,--debug`: show some verbose logs;
 * `-r,--report-period <PERIOD>`: period for printing metrics, in millis (default: 1000 ms);
 * `-w,--wait <TIME>`: the main loop is governed by a while loop that sleeps a bit every iteration so that it doesn't draw too much CPU power. That sleep is triggered by a `select()` call and that call will, by default, wait at most 200 ms before returning to the loop flow. This wait time can be adjusted by this argument;
@@ -78,7 +78,7 @@ Moreover, establishing a new connection in a separate thread takes an absurd amo
 
 To prevent TCP ACKs from getting to the server, run this on the client machine:
 
-    sudo iptables -A OUTPUT -p tcp --dport 3023 -j DROP
+    sudo iptables -A OUTPUT -p tcp --dport 3000 -j DROP
 
 To list existing firewall rules:
 
